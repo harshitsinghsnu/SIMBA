@@ -1,0 +1,15 @@
+{
+  "backbone": "facebook/esm2_t33_650M_UR50D",
+  "plm_hidden_size": 1280,
+  "d_model": 256,
+  "n_heads": 4,
+  "n_memory": 24,
+  "pair_hidden": 64,
+  "mlp_hidden": 128,
+  "use_pairformer": true,
+  "n_pairformer_layers": 1,
+  "holdout_complex": "1BRS",
+  "best_val_pcc": 0.9124547925092303,
+  "n_train": 6437,
+  "n_val": 715
+}

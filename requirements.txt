@@ -1,0 +1,18 @@
+# Exact package versions used to produce every number reported in the paper.
+# GPU training/embedding requires a CUDA-enabled torch build -- install torch
+# from https://pytorch.org/get-started/locally/ for your CUDA version first,
+# or use environment.yml with conda, then pip install the rest of this file.
+--extra-index-url https://download.pytorch.org/whl/cu118
+torch==2.5.0+cu118
+transformers==5.4.0
+tokenizers==0.22.2
+huggingface_hub==1.22.0
+safetensors==0.8.0
+numpy==1.26.4
+scipy==1.13.1
+pandas==2.2.3
+scikit-learn==1.8.0
+matplotlib==3.8.4
+tqdm==4.66.4
+biopython==1.84
+certifi==2026.6.17
