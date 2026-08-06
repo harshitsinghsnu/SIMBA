@@ -3,17 +3,7 @@ the statistical summary of confirmed wins (D-E) -- merged into one panel
 per request, since both are "how much do we trust these numbers" views of
 the same underlying ablation/benchmark data.
 
-  (A-C) 3-architecture x 3-split ablation matrix on the combined
-        general-PPI pool, Pearson / Spearman / RMSE, 95% bootstrap CIs
-        from each run's saved per-example predictions.
-  (D)   Pooled vs. intra-target correlation, Fisher-z corrected.
-  (E)   Forest plot of every confirmed win in the paper's master table,
-        SIMBA (95% bootstrap CI) vs. each baseline's exact reported/
-        reproduced value. Restricted to confirmed wins only (matches the
-        paper's own stated policy) -- PPI-Affinity Test Set 2 is excluded,
-        and the RDE-PPI vs. ESM-1v (zero-shot) comparison was withdrawn
-        since a properly supervised same-split baseline (RDE-PPI's own
-        structural model) is also available and SIMBA does not beat it.
+
 
 No in-image titles/headings: panel identity is carried by the A-E letters
 alone, full description lives in the LaTeX caption.
