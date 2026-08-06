@@ -7,7 +7,7 @@ for model init/dropout, only the data-shuffling order via Python's own
 `random.Random(seed)`).
 
 Deliberately scoped to RDE-PPI and AbDesign's ddG subset -- the two
-headline wins (vs. FoldX/ESM-1v and vs. the reported SOTA-collapse
+headline wins (vs. FoldX and vs. the reported SOTA-collapse
 baselines respectively) -- not the full 5-benchmark matrix; ProtAttBA's
 S1131 (also a clear win) and AB645/AB1101 (already near-zero/noise, not a
 "winning" result) are left at single-seed given the added multi-hour cost
