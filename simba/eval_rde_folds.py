@@ -5,14 +5,6 @@ folds, same metric definitions (pooled "Overall" correlation across all test
 folds combined, and "Per-Structure" correlation averaged over complexes with
 >=10 mutations, discarding smaller groups exactly as they do).
 
-Published reference numbers (RDE-PPI, ICLR 2023, Table 1, verified from the
-paper text) on this exact split:
-
-                    Per-Struct.         Overall
-                    Pearson  Spearman   Pearson  Spearman
-  ESM-1v (0-shot)    0.0073  -0.0118    0.1921   0.1572
-  FoldX              0.3789   0.3693    0.3120   0.4071
-  RDE-Network        0.4448   0.4010    0.6447   0.5584   <- current best in that table
 """
 
 from __future__ import annotations
