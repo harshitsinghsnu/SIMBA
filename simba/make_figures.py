@@ -44,7 +44,6 @@ ROOT = Path(__file__).resolve().parent.parent
 # loses to), and AbDesign's ddG subset vs. reported SOTA collapse.
 HEADLINE_BASELINES = {
     "benchmark46\n(dG, PCC)": {"simba": 0.788, "best_baseline": ("PPI-Graphomer", 0.641)},
-    "RDE-PPI\n(ddG, overall P, vs 0-shot)": {"simba": 0.533, "best_baseline": ("ESM-1v", 0.192)},
     "AbDesign ddG\n(per-cplx S)": {"simba": 0.371, "best_baseline": ("reported SOTA", 0.10)},
     "PPI-Affinity Test 2\n(dG, PCC)": {"simba": 0.333, "best_baseline": ("PRODIGY", 0.308)},
 }
