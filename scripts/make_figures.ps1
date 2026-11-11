@@ -33,4 +33,7 @@ Write-Host "Figure 6 (interpretability, 1CSE + 3BTD) ..." -ForegroundColor Cyan
 Write-Host "Supplementary: SKEMPI2-only pool ablation figure ..." -ForegroundColor Cyan
 & $PYTHON -m simba.make_skempi2_only_figure
 
+Write-Host "Camera-ready versions of Figures 2-5 (native, print-size; written to figures/camera_ready/) ..." -ForegroundColor Cyan
+& $PYTHON -m simba.make_camera_ready_figures
+
 Write-Host "`nAll figures written to .\figures\" -ForegroundColor Green
