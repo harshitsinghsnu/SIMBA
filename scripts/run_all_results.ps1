@@ -17,12 +17,17 @@ $env:PYTHONUNBUFFERED = "1"
 Write-Host "=== Kastritis-lineage (benchmark46), 3 seeds ===" -ForegroundColor Cyan
 & $PYTHON -m simba.eval_affinity_extended --mode multiseed --test-sets benchmark46 --seeds 0 1 2 --out affinity_extended_results.json
 
-# --- Pairformer depth selection (Section 3.4) ---
-# Expected: Pearson 0.755 (1 layer) / 0.683 (2 layers) / 0.636 (3 layers)
-Write-Host "=== Pairformer depth ablation, prott_test1 ===" -ForegroundColor Cyan
+# --- Pairformer depth, development set (Section 3.4) ---
+# Single seed on the 50-complex prott_test1 set; this is the original depth-selection run only.
+# The conclusion drawn in the paper (depth makes no measurable difference) comes from the
+# 3-seed cold-target sweep in run_reviewer_ablations.ps1, which also contains the memory ablation.
+Write-Host "=== Pairformer depth ablation, prott_test1 (development set) ===" -ForegroundColor Cyan
 & $PYTHON -m simba.eval_affinity --test-set prott_test1 --n-pairformer-layers 1 --out depth1_results.json
 & $PYTHON -m simba.eval_affinity --test-set prott_test1 --n-pairformer-layers 2 --out depth2_results.json
 & $PYTHON -m simba.eval_affinity --test-set prott_test1 --n-pairformer-layers 3 --out depth3_results.json
+
+# --- Memory ablation + 3-seed depth sweep on the cold-target pool (Table: memory/depth ablations) ---
+& .\scripts\run_reviewer_ablations.ps1
 
 # --- Mutation-effect: AbDesign zero-shot holdout + MINT-protocol split ---
 # Expected AbDesign: Pearson/Spearman 0.352+/-0.014 / 0.371+/-0.027 (Table S2, row 2)

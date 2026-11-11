@@ -1,0 +1,9 @@
+variant,pairformer_layers,memory_slots,n_seeds,pearson_mean,pearson_sd
+memory,1,8,3,0.6579,0.0079
+memory,1,16,3,0.6563,0.0073
+memory,1,24,3,0.6538,0.0076
+memory,1,32,3,0.6628,0.0028
+memory,2,24,3,0.6557,0.0053
+memory,3,24,3,0.659,0.006
+memory_only,1,24,3,0.5513,0.0281
+no_memory,1,0,3,0.6679,0.0018

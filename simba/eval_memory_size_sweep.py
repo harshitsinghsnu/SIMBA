@@ -38,6 +38,48 @@ from simba.features.cache import SequenceScoreCache  # noqa: E402
 from simba.features.plm import ESMScorer  # noqa: E402
 from simba.models.affinity import AbsoluteAffinityModel  # noqa: E402
 from simba.train import lr_at_step  # noqa: E402
+from simba.models.simba import PairwiseInterfaceBlock, make_projection  # noqa: E402
+import torch.nn as nn  # noqa: E402
+
+
+class NoMemoryModel(nn.Module):
+    """Memory ablation: same projection, Pairformer-lite and head as SIMBA,
+    but the 24-slot memory is removed and the Pairformer runs on the full
+    L_self x L_partner pair map built from the raw projected partner tokens
+    (cost grows with partner length; partners are capped at `max_partner`/`max_self`
+    tokens, by uniform subsampling, to fit in memory)."""
+
+    def __init__(self, plm_hidden_size, d_model=256, proj_mid_dim=512, n_heads=4, pair_hidden=64,
+                 mlp_hidden=128, dropout=0.1, n_layers=1, max_partner=128, max_self=256):
+        super().__init__()
+        self.max_partner, self.max_self = max_partner, max_self
+        self.proj = make_projection(plm_hidden_size, proj_mid_dim, d_model)
+        self.pairwise_block = PairwiseInterfaceBlock(d_model, n_heads, pair_hidden, dropout, n_layers=n_layers)
+        self.head = nn.Sequential(
+            nn.Linear(d_model, mlp_hidden), nn.ReLU(), nn.Dropout(dropout),
+            nn.Linear(mlp_hidden, mlp_hidden), nn.ReLU(), nn.Dropout(dropout),
+            nn.Linear(mlp_hidden, 1))
+
+    def forward(self, self_embedding, partner_embedding):
+        partner = self.proj(partner_embedding)
+        if partner.shape[0] > self.max_partner:
+            idx = torch.linspace(0, partner.shape[0] - 1, self.max_partner, device=partner.device).long()
+            partner = partner[idx]
+        own = self.proj(self_embedding)
+        if own.shape[0] > self.max_self:
+            idx = torch.linspace(0, own.shape[0] - 1, self.max_self, device=own.device).long()
+            own = own[idx]
+        return self.head(self.pairwise_block(own, partner)).squeeze(-1)
+
+
+def make_model(variant, hidden, n_memory, n_layers):
+    if variant == "memory":          # proposed SIMBA (n_memory slots, Pairformer-lite)
+        return AbsoluteAffinityModel(plm_hidden_size=hidden, n_memory=n_memory, n_pairformer_layers=n_layers)
+    if variant == "memory_only":     # memory + single-query readout, no Pairformer
+        return AbsoluteAffinityModel(plm_hidden_size=hidden, n_memory=n_memory, use_pairformer=False)
+    if variant == "no_memory":       # Pairformer on raw partner tokens, no memory
+        return NoMemoryModel(hidden, n_layers=n_layers)
+    raise ValueError(variant)
 
 
 def evaluate(model, examples, cache, device, memo):
@@ -53,12 +95,12 @@ def evaluate(model, examples, cache, device, memo):
     return np.asarray(preds), np.asarray(trues), ids
 
 
-def run_fold(train, val, test, *, hidden, n_memory, epochs, batch_size, lr, weight_decay,
+def run_fold(train, val, test, *, variant, n_layers, hidden, n_memory, epochs, batch_size, lr, weight_decay,
              device, seed, cache):
     torch.manual_seed(seed)
     rng = random.Random(seed)
     memo: dict = {}
-    model = AbsoluteAffinityModel(plm_hidden_size=hidden, n_memory=n_memory).to(device)
+    model = make_model(variant, hidden, n_memory, n_layers).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     steps_per_epoch = max(1, math.ceil(len(train) / batch_size))
     total_steps = steps_per_epoch * epochs
@@ -96,7 +138,7 @@ def run_fold(train, val, test, *, hidden, n_memory, epochs, batch_size, lr, weig
     return evaluate(model, test, cache, device, memo)
 
 
-def run_sweep_value(examples, folds, *, n_memory, hidden, epochs, batch_size, lr, weight_decay,
+def run_sweep_value(examples, folds, *, variant, n_layers, n_memory, hidden, epochs, batch_size, lr, weight_decay,
                      val_frac, device, seed, cache):
     all_preds, all_trues, all_ids = [], [], []
     rng = random.Random(seed)
@@ -108,7 +150,7 @@ def run_sweep_value(examples, folds, *, n_memory, hidden, epochs, batch_size, lr
         n_val = max(1, int(val_frac * len(idx)))
         val = [train_val[i] for i in idx[:n_val]]
         train = [train_val[i] for i in idx[n_val:]]
-        preds, trues, ids = run_fold(train, val, test, hidden=hidden, n_memory=n_memory, epochs=epochs,
+        preds, trues, ids = run_fold(train, val, test, variant=variant, n_layers=n_layers, hidden=hidden, n_memory=n_memory, epochs=epochs,
                                       batch_size=batch_size, lr=lr, weight_decay=weight_decay,
                                       device=device, seed=seed * 100 + fold_idx, cache=cache)
         all_preds.extend(preds.tolist())
@@ -122,13 +164,15 @@ def run_sweep_value(examples, folds, *, n_memory, hidden, epochs, batch_size, lr
     rmse = float(np.sqrt(np.mean((all_trues_arr - all_preds_arr) ** 2)))
     # Raw per-example predictions are saved alongside the summary metrics so
     # bootstrap CIs / figures can be recomputed later without retraining.
-    return {"n_memory": n_memory, "pearson": pcc, "spearman": scc, "rmse": rmse, "n": len(all_trues),
+    return {"variant": variant, "n_layers": n_layers, "n_memory": n_memory, "pearson": pcc, "spearman": scc, "rmse": rmse, "n": len(all_trues),
             "predictions": {"ids": all_ids, "true": all_trues, "pred": all_preds}}
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--memory-sizes", type=int, nargs="+", default=[8, 16, 24, 32, 48])
+    parser.add_argument("--variant", choices=["memory", "memory_only", "no_memory"], default="memory")
+    parser.add_argument("--layers", type=int, default=1, help="Pairformer-lite depth (memory / no_memory)")
     parser.add_argument("--split", choices=["complex", "seq_similarity", "cold_target"], default="cold_target")
     parser.add_argument("--epochs", type=int, default=40)
     parser.add_argument("--batch-size", type=int, default=16)
@@ -153,7 +197,7 @@ def main():
 
     results = []
     for n_memory in args.memory_sizes:
-        r = run_sweep_value(examples, folds, n_memory=n_memory, hidden=hidden, epochs=args.epochs,
+        r = run_sweep_value(examples, folds, variant=args.variant, n_layers=args.layers, n_memory=n_memory, hidden=hidden, epochs=args.epochs,
                              batch_size=args.batch_size, lr=args.lr, weight_decay=args.weight_decay,
                              val_frac=args.val_frac, device=device, seed=args.seed, cache=cache)
         print(f"[n_memory={n_memory}] Pearson={r['pearson']:.4f} Spearman={r['spearman']:.4f} "
